@@ -8,14 +8,13 @@
 </head>
 <body>
   <div class="container">
-    <div class="header-row">
-      <h1>ETNS TODO</h1>
-      <a class="calendar-link" href="{{ url_for('calendar_view') }}">📅 캘린더 보기</a>
-    </div>
+    <h1>ETNS TODO</h1>
 
     <form class="add-form" action="{{ url_for('add') }}" method="post">
       <input type="text" name="title" placeholder="할 일을 입력하세요" autocomplete="off" required>
       <input type="date" name="due_date">
+      <input type="hidden" name="view_year" value="{{ year }}">
+      <input type="hidden" name="view_month" value="{{ month }}">
       <button type="submit">추가</button>
     </form>
 
@@ -33,6 +32,8 @@
       {% for todo in todos %}
         <li class="{{ 'done' if todo['done'] else '' }}">
           <form action="{{ url_for('toggle', todo_id=todo['id']) }}" method="post" class="toggle-form">
+            <input type="hidden" name="view_year" value="{{ year }}">
+            <input type="hidden" name="view_month" value="{{ month }}">
             <button type="submit" class="check-btn">{{ '✔' if todo['done'] else '○' }}</button>
           </form>
           <span class="title">{{ todo['title'] }}</span>
@@ -41,6 +42,8 @@
           {% endif %}
           <span class="created">{{ todo['created_at'] }}</span>
           <form action="{{ url_for('delete', todo_id=todo['id']) }}" method="post" class="delete-form">
+            <input type="hidden" name="view_year" value="{{ year }}">
+            <input type="hidden" name="view_month" value="{{ month }}">
             <button type="submit" class="delete-btn">삭제</button>
           </form>
         </li>
@@ -48,6 +51,51 @@
         <li class="empty">할 일이 없습니다. 위에서 추가해보세요!</li>
       {% endfor %}
     </ul>
+
+    <hr class="section-divider">
+
+    <div class="calendar-section">
+      <div class="header-row">
+        <h2>{{ year }}년 {{ month }}월</h2>
+      </div>
+
+      <div class="calendar-nav">
+        <a href="{{ url_for('index', year=prev_year, month=prev_month) }}">‹ 이전 달</a>
+        <a href="{{ url_for('index', year=next_year, month=next_month) }}">다음 달 ›</a>
+      </div>
+
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="sun">일</th>
+            <th>월</th>
+            <th>화</th>
+            <th>수</th>
+            <th>목</th>
+            <th>금</th>
+            <th class="sat">토</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for week in weeks %}
+            <tr>
+              {% for day in week %}
+                {% if day == 0 %}
+                  <td class="empty-day"></td>
+                {% else %}
+                  <td class="{{ 'today' if (year, month, day) == (today.year, today.month, today.day) else '' }}">
+                    <div class="day-num">{{ day }}</div>
+                    {% for todo in todos_by_day.get(day, []) %}
+                      <div class="day-todo {{ 'done' if todo['done'] else '' }}">{{ todo['title'] }}</div>
+                    {% endfor %}
+                  </td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </body>
 </html>

@@ -55,62 +55,8 @@ def init_db():
     conn.close()
 
 
-@app.route("/")
-def index():
-    conn = get_db()
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM todos ORDER BY done ASC, due_date NULLS LAST, id DESC")
-        todos = cur.fetchall()
-    conn.close()
-    return render_template("index.html", todos=todos)
-
-
-@app.route("/add", methods=["POST"])
-def add():
-    title = request.form.get("title", "").strip()
-    due_date = request.form.get("due_date") or None
-    if not title:
-        flash("할 일 내용을 입력해주세요.")
-        return redirect(url_for("index"))
-
-    conn = get_db()
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO todos (title, done, created_at, due_date) VALUES (%s, FALSE, %s, %s)",
-            (title, datetime.now().strftime("%Y-%m-%d %H:%M"), due_date),
-        )
-    conn.commit()
-    conn.close()
-    return redirect(url_for("index"))
-
-
-@app.route("/toggle/<int:todo_id>", methods=["POST"])
-def toggle(todo_id):
-    conn = get_db()
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE todos SET done = NOT done WHERE id = %s", (todo_id,)
-        )
-    conn.commit()
-    conn.close()
-    return redirect(url_for("index"))
-
-
-@app.route("/delete/<int:todo_id>", methods=["POST"])
-def delete(todo_id):
-    conn = get_db()
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM todos WHERE id = %s", (todo_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for("index"))
-
-
-@app.route("/calendar")
-def calendar_view():
+def _get_calendar_context(year, month):
     today = date.today()
-    year = request.args.get("year", type=int, default=today.year)
-    month = request.args.get("month", type=int, default=today.month)
 
     # 1~12 범위를 벗어나면 연도를 넘겨가며 보정한다.
     year += (month - 1) // 12
@@ -141,18 +87,83 @@ def calendar_view():
     prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
 
-    return render_template(
-        "calendar.html",
-        year=year,
-        month=month,
-        weeks=weeks,
-        todos_by_day=todos_by_day,
-        today=today,
-        prev_year=prev_year,
-        prev_month=prev_month,
-        next_year=next_year,
-        next_month=next_month,
-    )
+    return {
+        "year": year,
+        "month": month,
+        "weeks": weeks,
+        "todos_by_day": todos_by_day,
+        "today": today,
+        "prev_year": prev_year,
+        "prev_month": prev_month,
+        "next_year": next_year,
+        "next_month": next_month,
+    }
+
+
+@app.route("/")
+def index():
+    today = date.today()
+    year = request.args.get("year", type=int, default=today.year)
+    month = request.args.get("month", type=int, default=today.month)
+
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM todos ORDER BY done ASC, due_date NULLS LAST, id DESC")
+        todos = cur.fetchall()
+    conn.close()
+
+    calendar_ctx = _get_calendar_context(year, month)
+    return render_template("index.html", todos=todos, **calendar_ctx)
+
+
+def _redirect_to_index():
+    # 캘린더에서 다른 달을 보던 중이었다면 그 달을 유지한 채로 돌아간다.
+    year = request.form.get("view_year", type=int)
+    month = request.form.get("view_month", type=int)
+    if year and month:
+        return redirect(url_for("index", year=year, month=month))
+    return redirect(url_for("index"))
+
+
+@app.route("/add", methods=["POST"])
+def add():
+    title = request.form.get("title", "").strip()
+    due_date = request.form.get("due_date") or None
+    if not title:
+        flash("할 일 내용을 입력해주세요.")
+        return _redirect_to_index()
+
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO todos (title, done, created_at, due_date) VALUES (%s, FALSE, %s, %s)",
+            (title, datetime.now().strftime("%Y-%m-%d %H:%M"), due_date),
+        )
+    conn.commit()
+    conn.close()
+    return _redirect_to_index()
+
+
+@app.route("/toggle/<int:todo_id>", methods=["POST"])
+def toggle(todo_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE todos SET done = NOT done WHERE id = %s", (todo_id,)
+        )
+    conn.commit()
+    conn.close()
+    return _redirect_to_index()
+
+
+@app.route("/delete/<int:todo_id>", methods=["POST"])
+def delete(todo_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM todos WHERE id = %s", (todo_id,))
+    conn.commit()
+    conn.close()
+    return _redirect_to_index()
 
 
 init_db()
