@@ -4,3 +4,6 @@ venv/
 .venv/
 todo.db
 .env
+
+.vercel
+.env*

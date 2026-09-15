@@ -5,7 +5,9 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "todo.db")
+# Vercel의 배포 파일 시스템은 읽기 전용이라 /tmp에 임시로 저장한다.
+# (요청마다 초기화될 수 있음 - Supabase 연동 전까지의 임시 조치)
+DB_PATH = "/tmp/todo.db" if os.environ.get("VERCEL") else os.path.join(BASE_DIR, "todo.db")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
@@ -80,6 +82,7 @@ def delete(todo_id):
     return redirect(url_for("index"))
 
 
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
