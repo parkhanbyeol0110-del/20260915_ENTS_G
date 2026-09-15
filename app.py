@@ -1,5 +1,6 @@
+import calendar
 import os
-from datetime import datetime
+from datetime import date, datetime
 from urllib.parse import urlsplit
 
 import psycopg2
@@ -44,10 +45,12 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
                 done BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                due_date DATE
             )
             """
         )
+        cur.execute("ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE")
     conn.commit()
     conn.close()
 
@@ -56,7 +59,7 @@ def init_db():
 def index():
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT * FROM todos ORDER BY done ASC, id DESC")
+        cur.execute("SELECT * FROM todos ORDER BY done ASC, due_date NULLS LAST, id DESC")
         todos = cur.fetchall()
     conn.close()
     return render_template("index.html", todos=todos)
@@ -65,6 +68,7 @@ def index():
 @app.route("/add", methods=["POST"])
 def add():
     title = request.form.get("title", "").strip()
+    due_date = request.form.get("due_date") or None
     if not title:
         flash("할 일 내용을 입력해주세요.")
         return redirect(url_for("index"))
@@ -72,8 +76,8 @@ def add():
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO todos (title, done, created_at) VALUES (%s, FALSE, %s)",
-            (title, datetime.now().strftime("%Y-%m-%d %H:%M")),
+            "INSERT INTO todos (title, done, created_at, due_date) VALUES (%s, FALSE, %s, %s)",
+            (title, datetime.now().strftime("%Y-%m-%d %H:%M"), due_date),
         )
     conn.commit()
     conn.close()
@@ -100,6 +104,55 @@ def delete(todo_id):
     conn.commit()
     conn.close()
     return redirect(url_for("index"))
+
+
+@app.route("/calendar")
+def calendar_view():
+    today = date.today()
+    year = request.args.get("year", type=int, default=today.year)
+    month = request.args.get("month", type=int, default=today.month)
+
+    # 1~12 범위를 벗어나면 연도를 넘겨가며 보정한다.
+    year += (month - 1) // 12
+    month = (month - 1) % 12 + 1
+
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT * FROM todos
+            WHERE due_date IS NOT NULL
+              AND EXTRACT(YEAR FROM due_date) = %s
+              AND EXTRACT(MONTH FROM due_date) = %s
+            ORDER BY due_date ASC, id ASC
+            """,
+            (year, month),
+        )
+        month_todos = cur.fetchall()
+    conn.close()
+
+    todos_by_day = {}
+    for todo in month_todos:
+        todos_by_day.setdefault(todo["due_date"].day, []).append(todo)
+
+    cal = calendar.Calendar(firstweekday=6)  # 일요일 시작
+    weeks = cal.monthdayscalendar(year, month)
+
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
+
+    return render_template(
+        "calendar.html",
+        year=year,
+        month=month,
+        weeks=weeks,
+        todos_by_day=todos_by_day,
+        today=today,
+        prev_year=prev_year,
+        prev_month=prev_month,
+        next_year=next_year,
+        next_month=next_month,
+    )
 
 
 init_db()

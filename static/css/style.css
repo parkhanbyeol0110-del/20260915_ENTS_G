@@ -24,18 +24,49 @@ h1 {
   color: #2b6cb0;
 }
 
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.header-row h1 {
+  flex: 1;
+}
+
+.calendar-link {
+  font-size: 13px;
+  color: #2b6cb0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.calendar-link:hover {
+  text-decoration: underline;
+}
+
 .add-form {
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.add-form input {
+.add-form input[type="text"] {
   flex: 1;
+  min-width: 120px;
   padding: 10px 12px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
+}
+
+.add-form input[type="date"] {
+  padding: 10px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
 .add-form button {
@@ -92,6 +123,12 @@ h1 {
   word-break: break-all;
 }
 
+.due-date {
+  font-size: 11px;
+  color: #2b6cb0;
+  white-space: nowrap;
+}
+
 .created {
   font-size: 11px;
   color: #aaa;
@@ -117,4 +154,87 @@ h1 {
 .toggle-form, .delete-form {
   display: inline;
   margin: 0;
+}
+
+/* 캘린더 페이지 */
+.calendar-container {
+  max-width: 640px;
+}
+
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+
+.calendar-nav a {
+  color: #2b6cb0;
+  text-decoration: none;
+}
+
+.calendar-nav a:hover {
+  text-decoration: underline;
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.calendar-table th {
+  padding: 6px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.calendar-table th.sun {
+  color: #e53e3e;
+}
+
+.calendar-table th.sat {
+  color: #2b6cb0;
+}
+
+.calendar-table td {
+  vertical-align: top;
+  height: 72px;
+  border: 1px solid #eee;
+  padding: 4px;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.calendar-table td.empty-day {
+  background: #fafafa;
+}
+
+.calendar-table td.today {
+  background: #ebf4ff;
+  border-color: #2b6cb0;
+}
+
+.day-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 2px;
+}
+
+.day-todo {
+  background: #2b6cb0;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-bottom: 2px;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-todo.done {
+  background: #ccc;
+  text-decoration: line-through;
 }

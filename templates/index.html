@@ -8,10 +8,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>ETNS TODO</h1>
+    <div class="header-row">
+      <h1>ETNS TODO</h1>
+      <a class="calendar-link" href="{{ url_for('calendar_view') }}">📅 캘린더 보기</a>
+    </div>
 
     <form class="add-form" action="{{ url_for('add') }}" method="post">
       <input type="text" name="title" placeholder="할 일을 입력하세요" autocomplete="off" required>
+      <input type="date" name="due_date">
       <button type="submit">추가</button>
     </form>
 
@@ -32,6 +36,9 @@
             <button type="submit" class="check-btn">{{ '✔' if todo['done'] else '○' }}</button>
           </form>
           <span class="title">{{ todo['title'] }}</span>
+          {% if todo['due_date'] %}
+            <span class="due-date">📅 {{ todo['due_date'].strftime('%Y-%m-%d') }}</span>
+          {% endif %}
           <span class="created">{{ todo['created_at'] }}</span>
           <form action="{{ url_for('delete', todo_id=todo['id']) }}" method="post" class="delete-form">
             <button type="submit" class="delete-btn">삭제</button>
