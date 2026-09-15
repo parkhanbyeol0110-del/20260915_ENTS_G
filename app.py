@@ -1,36 +1,37 @@
 import os
-import sqlite3
 from datetime import datetime
 
+import psycopg2
+import psycopg2.extras
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Vercel의 배포 파일 시스템은 읽기 전용이라 /tmp에 임시로 저장한다.
-# (요청마다 초기화될 수 있음 - Supabase 연동 전까지의 임시 조치)
-DB_PATH = "/tmp/todo.db" if os.environ.get("VERCEL") else os.path.join(BASE_DIR, "todo.db")
+load_dotenv(".env.local")
+
+DATABASE_URL = os.environ["POSTGRES_URL"]
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
 
 
 def init_db():
     conn = get_db()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS todos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            done INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS todos (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                done BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TEXT NOT NULL
+            )
+            """
         )
-        """
-    )
     conn.commit()
     conn.close()
 
@@ -38,9 +39,9 @@ def init_db():
 @app.route("/")
 def index():
     conn = get_db()
-    todos = conn.execute(
-        "SELECT * FROM todos ORDER BY done ASC, id DESC"
-    ).fetchall()
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM todos ORDER BY done ASC, id DESC")
+        todos = cur.fetchall()
     conn.close()
     return render_template("index.html", todos=todos)
 
@@ -53,10 +54,11 @@ def add():
         return redirect(url_for("index"))
 
     conn = get_db()
-    conn.execute(
-        "INSERT INTO todos (title, done, created_at) VALUES (?, 0, ?)",
-        (title, datetime.now().strftime("%Y-%m-%d %H:%M")),
-    )
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO todos (title, done, created_at) VALUES (%s, FALSE, %s)",
+            (title, datetime.now().strftime("%Y-%m-%d %H:%M")),
+        )
     conn.commit()
     conn.close()
     return redirect(url_for("index"))
@@ -65,9 +67,10 @@ def add():
 @app.route("/toggle/<int:todo_id>", methods=["POST"])
 def toggle(todo_id):
     conn = get_db()
-    conn.execute(
-        "UPDATE todos SET done = 1 - done WHERE id = ?", (todo_id,)
-    )
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE todos SET done = NOT done WHERE id = %s", (todo_id,)
+        )
     conn.commit()
     conn.close()
     return redirect(url_for("index"))
@@ -76,7 +79,8 @@ def toggle(todo_id):
 @app.route("/delete/<int:todo_id>", methods=["POST"])
 def delete(todo_id):
     conn = get_db()
-    conn.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM todos WHERE id = %s", (todo_id,))
     conn.commit()
     conn.close()
     return redirect(url_for("index"))
