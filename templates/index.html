@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETNS TODO</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>ETNS TODO</h1>
+
+    <form class="add-form" action="{{ url_for('add') }}" method="post">
+      <input type="text" name="title" placeholder="할 일을 입력하세요" autocomplete="off" required>
+      <button type="submit">추가</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flash">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <ul class="todo-list">
+      {% for todo in todos %}
+        <li class="{{ 'done' if todo['done'] else '' }}">
+          <form action="{{ url_for('toggle', todo_id=todo['id']) }}" method="post" class="toggle-form">
+            <button type="submit" class="check-btn">{{ '✔' if todo['done'] else '○' }}</button>
+          </form>
+          <span class="title">{{ todo['title'] }}</span>
+          <span class="created">{{ todo['created_at'] }}</span>
+          <form action="{{ url_for('delete', todo_id=todo['id']) }}" method="post" class="delete-form">
+            <button type="submit" class="delete-btn">삭제</button>
+          </form>
+        </li>
+      {% else %}
+        <li class="empty">할 일이 없습니다. 위에서 추가해보세요!</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>

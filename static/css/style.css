@@ -1,0 +1,120 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+  background: #f4f6f8;
+  color: #222;
+}
+
+.container {
+  max-width: 480px;
+  margin: 60px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 32px;
+}
+
+h1 {
+  text-align: center;
+  margin-top: 0;
+  color: #2b6cb0;
+}
+
+.add-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.add-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.add-form button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #2b6cb0;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-form button:hover {
+  background: #245a94;
+}
+
+.flash {
+  list-style: none;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 6px;
+}
+
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.todo-list li.empty {
+  justify-content: center;
+  color: #999;
+  padding: 24px 0;
+}
+
+.todo-list li.done .title {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.title {
+  flex: 1;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.created {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.check-btn {
+  border: none;
+  background: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #2b6cb0;
+  width: 24px;
+}
+
+.delete-btn {
+  border: none;
+  background: none;
+  color: #e53e3e;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.toggle-form, .delete-form {
+  display: inline;
+  margin: 0;
+}
