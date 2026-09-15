@@ -59,6 +59,89 @@ h2 {
   text-decoration: underline;
 }
 
+.logout-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.username {
+  font-size: 13px;
+  color: #555;
+}
+
+.logout-btn {
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #555;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #f4f6f8;
+}
+
+/* 로그인 / 회원가입 페이지 */
+.auth-container {
+  max-width: 360px;
+}
+
+.auth-subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+  margin-top: -8px;
+  margin-bottom: 24px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-form input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.auth-form button {
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background: #2b6cb0;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.auth-form button:hover {
+  background: #245a94;
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-top: 20px;
+}
+
+.auth-switch a {
+  color: #2b6cb0;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
 .add-form {
   display: flex;
   gap: 8px;

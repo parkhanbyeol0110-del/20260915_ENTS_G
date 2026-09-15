@@ -8,7 +8,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>ETNS TODO</h1>
+    <div class="header-row">
+      <h1>ETNS TODO</h1>
+      <form class="logout-form" action="{{ url_for('logout') }}" method="post">
+        <span class="username">{{ username }}님</span>
+        <button type="submit" class="logout-btn">로그아웃</button>
+      </form>
+    </div>
 
     <form class="add-form" action="{{ url_for('add') }}" method="post">
       <input type="text" name="title" placeholder="할 일을 입력하세요" autocomplete="off" required>

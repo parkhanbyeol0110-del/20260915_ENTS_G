@@ -1,12 +1,14 @@
 import calendar
 import os
 from datetime import date, datetime
+from functools import wraps
 from urllib.parse import urlsplit
 
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv(".env.local")
 
@@ -41,6 +43,16 @@ def init_db():
     with conn.cursor() as cur:
         cur.execute(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS todos (
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
@@ -51,11 +63,82 @@ def init_db():
             """
         )
         cur.execute("ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE")
+        cur.execute("ALTER TABLE todos ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)")
     conn.commit()
     conn.close()
 
 
-def _get_calendar_context(year, month):
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "GET":
+        return render_template("signup.html")
+
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    if not username or not password:
+        flash("아이디와 비밀번호를 모두 입력해주세요.")
+        return redirect(url_for("signup"))
+
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
+            conn.close()
+            flash("이미 사용 중인 아이디입니다.")
+            return redirect(url_for("signup"))
+
+        cur.execute(
+            "INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
+            (username, generate_password_hash(password)),
+        )
+        user_id = cur.fetchone()["id"]
+    conn.commit()
+    conn.close()
+
+    session["user_id"] = user_id
+    session["username"] = username
+    return redirect(url_for("index"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html")
+
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+    conn.close()
+
+    if not user or not check_password_hash(user["password_hash"], password):
+        flash("아이디 또는 비밀번호가 올바르지 않습니다.")
+        return redirect(url_for("login"))
+
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    return redirect(url_for("index"))
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+def _get_calendar_context(year, month, user_id):
     today = date.today()
 
     # 1~12 범위를 벗어나면 연도를 넘겨가며 보정한다.
@@ -67,12 +150,13 @@ def _get_calendar_context(year, month):
         cur.execute(
             """
             SELECT * FROM todos
-            WHERE due_date IS NOT NULL
+            WHERE user_id = %s
+              AND due_date IS NOT NULL
               AND EXTRACT(YEAR FROM due_date) = %s
               AND EXTRACT(MONTH FROM due_date) = %s
             ORDER BY due_date ASC, id ASC
             """,
-            (year, month),
+            (user_id, year, month),
         )
         month_todos = cur.fetchall()
     conn.close()
@@ -101,19 +185,26 @@ def _get_calendar_context(year, month):
 
 
 @app.route("/")
+@login_required
 def index():
+    user_id = session["user_id"]
     today = date.today()
     year = request.args.get("year", type=int, default=today.year)
     month = request.args.get("month", type=int, default=today.month)
 
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT * FROM todos ORDER BY done ASC, due_date NULLS LAST, id DESC")
+        cur.execute(
+            "SELECT * FROM todos WHERE user_id = %s ORDER BY done ASC, due_date NULLS LAST, id DESC",
+            (user_id,),
+        )
         todos = cur.fetchall()
     conn.close()
 
-    calendar_ctx = _get_calendar_context(year, month)
-    return render_template("index.html", todos=todos, **calendar_ctx)
+    calendar_ctx = _get_calendar_context(year, month, user_id)
+    return render_template(
+        "index.html", todos=todos, username=session["username"], **calendar_ctx
+    )
 
 
 def _redirect_to_index():
@@ -126,6 +217,7 @@ def _redirect_to_index():
 
 
 @app.route("/add", methods=["POST"])
+@login_required
 def add():
     title = request.form.get("title", "").strip()
     due_date = request.form.get("due_date") or None
@@ -136,8 +228,8 @@ def add():
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO todos (title, done, created_at, due_date) VALUES (%s, FALSE, %s, %s)",
-            (title, datetime.now().strftime("%Y-%m-%d %H:%M"), due_date),
+            "INSERT INTO todos (title, done, created_at, due_date, user_id) VALUES (%s, FALSE, %s, %s, %s)",
+            (title, datetime.now().strftime("%Y-%m-%d %H:%M"), due_date, session["user_id"]),
         )
     conn.commit()
     conn.close()
@@ -145,11 +237,13 @@ def add():
 
 
 @app.route("/toggle/<int:todo_id>", methods=["POST"])
+@login_required
 def toggle(todo_id):
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE todos SET done = NOT done WHERE id = %s", (todo_id,)
+            "UPDATE todos SET done = NOT done WHERE id = %s AND user_id = %s",
+            (todo_id, session["user_id"]),
         )
     conn.commit()
     conn.close()
@@ -157,10 +251,14 @@ def toggle(todo_id):
 
 
 @app.route("/delete/<int:todo_id>", methods=["POST"])
+@login_required
 def delete(todo_id):
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM todos WHERE id = %s", (todo_id,))
+        cur.execute(
+            "DELETE FROM todos WHERE id = %s AND user_id = %s",
+            (todo_id, session["user_id"]),
+        )
     conn.commit()
     conn.close()
     return _redirect_to_index()

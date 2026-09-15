@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETNS TODO - 로그인</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container auth-container">
+    <h1>ETNS TODO</h1>
+    <p class="auth-subtitle">로그인하고 할 일을 관리해보세요</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flash">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form class="auth-form" action="{{ url_for('login') }}" method="post">
+      <input type="text" name="username" placeholder="아이디" autocomplete="username" required>
+      <input type="password" name="password" placeholder="비밀번호" autocomplete="current-password" required>
+      <button type="submit">로그인</button>
+    </form>
+
+    <p class="auth-switch">
+      계정이 없으신가요? <a href="{{ url_for('signup') }}">회원가입</a>
+    </p>
+  </div>
+</body>
+</html>
